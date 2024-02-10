@@ -20,6 +20,7 @@ $data = isset($_POST['data']) ? flt_input($_POST['data']) : NULL;
 $dpt = $location['dpt'] ?? NULL;
 $act = $location['act'] ?? NULL;
 
+
 // SESSION
 
 Session::init(1);

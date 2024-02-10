@@ -48,4 +48,46 @@ class User {
         return $items;
     }
 
+
+    public static function users_list($d = []) {
+      // vars
+      $search = isset($d['search']) && trim($d['search']) ? $d['search'] : '';
+      $offset = isset($d['offset']) && is_numeric($d['offset']) ? $d['offset'] : 0;
+      $limit = 20;
+      $items = [];
+      // where
+      $where = [];
+      if ($search) $where[] = "phone LIKE '%".$search."%' OR first_name LIKE '%".$search."%' OR email LIKE '%".$search."%'";
+      $where = $where ? "WHERE ".implode(" AND ", $where) : "";
+
+      $q = DB::query("SELECT user_id, plot_id, first_name, last_name, phone, email, last_login
+          FROM users ".$where." ORDER BY first_name LIMIT ".$offset.", ".$limit.";") or die (DB::error());
+      while ($row = DB::fetch_row($q)) {
+          $items[] = [
+              'user_id' => (int) $row['user_id'],
+              'plot_id' => (int) $row['plot_id'],
+              'first_name' => $row['first_name'],
+              'last_name' => $row['last_name'],
+              'phone' => $row['phone'],
+              'email' => $row['email'],
+              'last_login' => date('Y/m/d', $row['last_login'])
+          ];
+      }
+      // paginator
+      $q = DB::query("SELECT count(*) FROM users ".$where.";");
+      $count = ($row = DB::fetch_row($q)) ? $row['count(*)'] : 0;
+      $url = 'users?';
+      if ($search) $url .= '&search='.$search;
+      paginator($count, $offset, $limit, $url, $paginator);
+      // output
+      return ['items' => $items, 'paginator' => $paginator];
+  }
+
+  public static function users_fetch($d = []) {
+    $info = User::users_list($d);
+    HTML::assign('users', $info['items']);
+    return ['html' => HTML::fetch('./partials/users_table.html'), 'paginator' => $info['paginator']];
+}
+
+
 }
