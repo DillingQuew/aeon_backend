@@ -6,23 +6,32 @@ class User {
 
     public static function user_info($d) {
         // vars
-        $user_id = isset($d['user_id']) && is_numeric($d['user_id']) ? $d['user_id'] : 0;
-        $phone = isset($d['phone']) ? preg_replace('~\D+~', '', $d['phone']) : 0;
+        $user_id = isset($d) && is_numeric($d) ? $d : 0;
         // where
-        if ($user_id) $where = "user_id='".$user_id."'";
-        else if ($phone) $where = "phone='".$phone."'";
-        else return [];
+    
+        $where = "user_id='".$user_id."'";
+
         // info
-        $q = DB::query("SELECT user_id, phone, access FROM users WHERE ".$where." LIMIT 1;") or die (DB::error());
+        $q = DB::query("SELECT user_id, plot_id, first_name, last_name, email, phone, access FROM users WHERE ".$where." LIMIT 1;") or die (DB::error());
         if ($row = DB::fetch_row($q)) {
             return [
-                'id' => (int) $row['user_id'],
-                'access' => (int) $row['access']
+                'user_id' => (int) $row['user_id'],
+                'plot_id' => (string) $row['plot_id'],
+                'first_name' => (string) $row['first_name'],
+                'last_name' => (string) $row['last_name'],
+                'email' => (string) $row['email'],
+                'phone' => (string) $row['phone'],
+                'access' => (int) $row['access'],
             ];
         } else {
             return [
-                'id' => 0,
-                'access' => 0
+              'user_id' => "",
+              'plot_id' => "",
+              'first_name' => "",
+              'last_name' => "",
+              'email' => "",
+              'phone' => "",
+              'access' => "",
             ];
         }
     }
@@ -87,7 +96,58 @@ class User {
     $info = User::users_list($d);
     HTML::assign('users', $info['items']);
     return ['html' => HTML::fetch('./partials/users_table.html'), 'paginator' => $info['paginator']];
+  }
+
+  public static function user_edit_window($d = []) {
+
+    $user_id = isset($d['user_id']) && is_numeric($d['user_id']) ? $d['user_id'] : 0;
+    HTML::assign('user', User::user_info($user_id));
+    return ['html' => HTML::fetch('./partials/user_edit.html')];
+  }
+
+  public static function user_edit_update($d = []) {
+    // vars
+    $user_id = isset($d['user_id']) && is_numeric($d['user_id']) ? $d['user_id'] : 0;
+    $first_name = isset($d['first_name']) ? $d['first_name'] : "";
+    $last_name = isset($d['last_name']) ? $d['last_name'] : "";
+    $phone = isset($d['phone']) ? preg_replace('/[^0-9]/', '', $d['phone']) : "";
+    $email = isset($d['email']) ? strtolower($d['email']) : "";
+    $plot_id = isset($d['plots']) ? $d['plots'] : "";
+    $offset = isset($d['offset']) ? preg_replace('~\D+~', '', $d['offset']) : 0;
+
+    if ($user_id) {
+        $set = [];
+        $set[] = "first_name='".$first_name."'";
+        $set[] = "last_name='".$last_name."'";
+        $set[] = "phone='".$phone."'";
+        $set[] = "email='".$email."'";
+        $set[] = "updated='".Session::$ts."'";
+        $set[] = "plot_id='".$plot_id."'";
+        $set = implode(", ", $set);
+        DB::query("UPDATE users SET ".$set." WHERE user_id='".$user_id."' LIMIT 1;") or die (DB::error());
+    } else {
+        DB::query("INSERT INTO users (
+            first_name,
+            last_name,
+            phone,
+            email,
+            updated
+        ) VALUES (
+            '".$first_name."',
+            '".$last_name."',
+            '".$phone."',
+            '".$email."',
+            '".Session::$ts."'
+        );") or die (DB::error());
+    }
+    // output
+    return User::users_fetch(['offset' => $offset]);
 }
 
+  public static function user_remove($d) {
+    $user_id = isset($d['user_id']) && is_numeric($d['user_id']) ? $d['user_id'] : 0;
+    DB::query("DELETE FROM users WHERE user_id="."$user_id") or die (DB::error());
+    return User::users_fetch(['offset' => 0]);
+  }
 
 }
